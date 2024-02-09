@@ -64,13 +64,24 @@ float moveSpeed = MIN_MOUSE_MOVE_SPEED;
 bool mouseActive = true;
 bool righthanded = true;
 
+float changeOfBasisMatrix_bs[3][3] = 
+{
+  {0.0, 0.0, 1.0},
+  {-1.0, 0.0, 0.0},
+  {0.0, -1.0, 0.0}
+};
+// float changeOfBasisMatrix[3][3] = 
+// {
+//   {0.0, -1.0, 0.0},
+//   {0.0, 0.0, -1.0},
+//   {1.0, 0.0, 0.0}
+// };
 // Max RTC Memory = 8kb
 RTC_DATA_ATTR int wakeCount = 0;
 RTC_DATA_ATTR int sleepCount = 0;
 RTC_DATA_ATTR bool sleeping = false;
 unsigned long lastTimeTouched = 0;
 unsigned long lastTimeIdle = millis(); 
-
 
 // ================================================================================
 //                                     SETUP       
@@ -145,7 +156,7 @@ void loop()
   // =========================
   //          MOUSE
   // =========================
-  if (mouseActive) 
+  if (mouseActive && bleMouse.isConnected()) 
   { 
     Vector3<float> mouse = Vector3<float>(0,0,0);
     Vector3<float> mouse2 = Vector3<float>(0,0,0);
@@ -153,16 +164,15 @@ void loop()
     
     if (isMousePointer)
     {
-      static Matrix3x3 prevRotationMatrix = Matrix3x3::identity;
+      static Vector3<float> v0_s;
       imu.Update();
-      Vector3<float> v0 = Vector3<float>(prevRotationMatrix.m[0][1], prevRotationMatrix.m[1][1], prevRotationMatrix.m[2][1]);
-      Vector3<float> v = Vector3<float>(imu.rotationMatrix.m[0][1], imu.rotationMatrix.m[1][1], imu.rotationMatrix.m[2][1]);
-      prevRotationMatrix = imu.rotationMatrix;
-
-      mouse = (v-v0) * 3000;
+  
+      Vector3<float> vf_s = Matrix3x3::Transpose(changeOfBasisMatrix_bs) * imu.rotationMatrix * changeOfBasisMatrix_bs * Vec3(0, 0, -1); // <0, 0, -1> = forward_s
+      mouse = (vf_s-v0_s) * 3000;
+      mouse.y *= -1; //API specific since up = -1 for some reason.
+      v0_s = vf_s; 
       scroll = joystick.Read().Normalized();
-      
-      bleMouse.move((mouse.x), -(mouse.z), scroll.y, scroll.x);
+      bleMouse.move(mouse.x, mouse.y/* -(mouse.z)*/, scroll.y, scroll.x);
 
       // JOYSTICK BUTTON PRESS
       static bool isPressing = false;
@@ -187,7 +197,7 @@ void loop()
       }
 
       // COLOR
-      float dot = DotProduct(v, Vector3<float>(0,1,0));
+      float dot = DotProduct(vf_s, Vector3<float>(0,1,0));
       if (dot > 0) {
         pixels.fill(0x00ff00);
       } else {
@@ -224,59 +234,56 @@ void loop()
         }
       #endif
     #endif
-
-    if (bleMouse.isConnected()) 
+    
+    // if either joystick moved
+    if (mouse.Magnitude() > EPSILON || mouse2.Magnitude() > EPSILON)
     {
-      // if either joystick moved
-      if (mouse.Magnitude() > EPSILON || mouse2.Magnitude() > EPSILON)
+      mouse.Normalize();
+      mouse2.Normalize();
+      moveSpeed += moveAccel * deltaTime;
+      mouse.x *= moveSpeed;
+      mouse.y *= moveSpeed;
+      mouse2.x *= moveSpeed;
+      mouse2.y *= moveSpeed;
+
+      // SCROLL: if both joysticks moving. Scroll direction depends on the resultant vector sum of the 2D axes.
+      if (mouse.Magnitude() > EPSILON && mouse2.Magnitude() > EPSILON) 
       {
-        mouse.Normalize();
-        mouse2.Normalize();
-        moveSpeed += moveAccel * deltaTime;
-        mouse.x *= moveSpeed;
-        mouse.y *= moveSpeed;
-        mouse2.x *= moveSpeed;
-        mouse2.y *= moveSpeed;
-
-        // SCROLL: if both joysticks moving. Scroll direction depends on the resultant vector sum of the 2D axes.
-        if (mouse.Magnitude() > EPSILON && mouse2.Magnitude() > EPSILON) 
-        {
-          scroll.x = constrain((mouse.x+mouse2.x), -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
-          scroll.y = constrain((mouse.y+mouse2.y), -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
-          
-          bleMouse.move(0, 0, scroll.y, scroll.x);
-        }
-        // MOUSE MOVE
-        else 
-        {
-          // Sum both vectors since we know only one joystick is moving while one or the other vector is zero.
-          mouse.x = constrain(mouse.x, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
-          mouse.y = constrain(mouse.y, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
-          mouse2.x = constrain(mouse2.x, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
-          mouse2.y = constrain(mouse2.y, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
-
-          bleMouse.move((mouse.x+mouse2.x), -(mouse.y+mouse2.y));
-        }
-
-        lastTimeIdle = millis();
-        mouse.Normalize();
-        uint32_t color = pixels.Color(abs(mouse.x) * 255, 0, abs(mouse.y) * 255);
-        pixels.fill(color);
-        pixels.show();
+        scroll.x = constrain((mouse.x+mouse2.x), -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
+        scroll.y = constrain((mouse.y+mouse2.y), -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
+        
+        bleMouse.move(0, 0, scroll.y, scroll.x);
       }
-      else {
-        moveSpeed = MIN_MOUSE_MOVE_SPEED;
-        pixels.fill(0x000000);
-        pixels.show();
-      }
-
-      // JOYSTICK BUTTON PRESS
-      if (mouse.z || mouse2.z) 
+      // MOUSE MOVE
+      else 
       {
-        bleMouse.click(MOUSE_LEFT);
-        delay(250); //since joystick clicks last longer than actual mouse 
-        lastTimeIdle = millis();
+        // Sum both vectors since we know only one joystick is moving while one or the other vector is zero.
+        mouse.x = constrain(mouse.x, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
+        mouse.y = constrain(mouse.y, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
+        mouse2.x = constrain(mouse2.x, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
+        mouse2.y = constrain(mouse2.y, -MAX_MOUSE_MOVE_SPEED, MAX_MOUSE_MOVE_SPEED);
+
+        bleMouse.move((mouse.x+mouse2.x), -(mouse.y+mouse2.y));
       }
+
+      lastTimeIdle = millis();
+      mouse.Normalize();
+      uint32_t color = pixels.Color(abs(mouse.x) * 255, 0, abs(mouse.y) * 255);
+      pixels.fill(color);
+      pixels.show();
+    }
+    else {
+      moveSpeed = MIN_MOUSE_MOVE_SPEED;
+      pixels.fill(0x000000);
+      pixels.show();
+    }
+
+    // JOYSTICK BUTTON PRESS
+    if (mouse.z || mouse2.z) 
+    {
+      bleMouse.click(MOUSE_LEFT);
+      delay(250); //since joystick clicks last longer than actual mouse 
+      lastTimeIdle = millis();
     }
   }
 
