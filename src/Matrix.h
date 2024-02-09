@@ -41,9 +41,8 @@ public:
         {0, 1, 0},
         {0, 0, 1}
     };
-
+    
     static float identity[3][3];
-    static float zero[3][3];
 
     void Set(float matrix3x3[3][3])
     {
@@ -56,15 +55,15 @@ public:
         }
     }
 
-    Matrix3x3() {}
-    Matrix3x3(float matrix3x3[3][3]) { Set(matrix3x3); }
+    Matrix3x3(){}
+    Matrix3x3(float matrix3x3[3][3]) {Set(matrix3x3);}
 
     static Matrix3x3 Transpose(const float matrix[][3])
     {
         Matrix3x3 result;
-        for (int r = 0; r < 3; r++)
+        for (int r = 0; r < 3; r++) 
         {
-            for (int c = 0; c < 3; c++)
+            for (int c = 0; c < 3; c++) 
             {
                 result.m[c][r] = matrix[r][c];
             }
@@ -167,10 +166,7 @@ public:
     }
 };
 
-// Roll-Pitch-Yaw x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
-Matrix3x3 RPY(float roll, float pitch, float yaw);
-// Yaw-Pitch-Roll z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
-Matrix3x3 YPR(float roll, float pitch, float yaw);
+
 //-------------------4x4---------------------
 
 class Matrix4x4
@@ -183,11 +179,10 @@ public:
         {0, 0, 0, 1}
     };
 
-    static float identity[4][4];
-    static float zero[4][4];
+static float identity[4][4];
 
     Matrix4x4() {}
-    Matrix4x4(float matrix[][4]) { Set(matrix); }
+    Matrix4x4(float matrix[][4]){ Set(matrix); }
 
     void Set(float matrix[][4])
     {
@@ -199,7 +194,7 @@ public:
             }
         }
     }
-
+    
     static Matrix4x4 Transpose(const Matrix4x4& matrix)
     {
         Matrix4x4 result;
@@ -242,5 +237,21 @@ public:
     }
 };
 
+// A * B
+Matrix3x3 operator*(const Matrix3x3& matrixA, const Matrix3x3& matrixB);
+// M * p
+Vector3<float> operator*(const Matrix3x3& matrix, const Vector3<float>& colVec);
 
+// A * B
+Matrix4x4 operator*(const Matrix4x4& matrixA, const Matrix4x4& matrixB);
+
+// M * p
+Vector4<float> operator*(const Matrix4x4& matrix, const Vector4<float>& colVec);
+
+// Roll-Pitch-Yaw x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
+Matrix3x3 RPY(float roll, float pitch, float yaw);
+
+// Yaw-Pitch-Roll z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
+Matrix3x3 YPR(float roll, float pitch, float yaw);
 #endif
+

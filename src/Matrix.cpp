@@ -1,27 +1,16 @@
-#include "Matrix.h"
+#include <Matrix.h>
 
-float Matrix3x3::identity[3][3] = {
+float Matrix3x3::identity[3][3] {
     {1, 0, 0},
     {0, 1, 0},
     {0, 0, 1}
 };
-float Matrix3x3::zero[3][3] = {
-    {0, 0, 0},
-    {0, 0, 0},
-    {0, 0, 0}
-};
 
-float Matrix4x4::identity[4][4] = {
+float Matrix4x4::identity[4][4] {
     {1, 0, 0, 0},
     {0, 1, 0, 0},
     {0, 0, 1, 0},
     {0, 0, 0, 1}
-};
-float Matrix4x4::zero[4][4] = {
-    {0, 0, 0, 0},
-    {0, 0, 0, 0},
-    {0, 0, 0, 0},
-    {0, 0, 0, 0}
 };
 
 
@@ -44,6 +33,24 @@ Vector3<float> operator*(const Matrix3x3& matrix, const Vector3<float>& colVec)
 
     return result;
 }
+
+// Roll-Pitch-Yaw x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
+Matrix3x3 RPY(float roll, float pitch, float yaw)
+{
+    //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotX(roll).m, Matrix3x3::RotY(pitch).m).m, Matrix3x3::RotZ(yaw).m);//Multiply(rotation.m, RotZ(PI/2.0).m);
+    Matrix3x3 rotation = (Matrix3x3::RotX(roll) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotZ(yaw);//Multiply(rotation.m, RotZ(PI/2.0).m);
+    return rotation;
+}
+
+// Yaw-Pitch-Roll z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
+Matrix3x3 YPR(float roll, float pitch, float yaw)
+{
+    //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotZ(yaw).m, Matrix3x3::RotY(pitch).m).m, Matrix3x3::RotX(roll).m);//Multiply(rotation.m, RotZ(PI/2.0).m);
+    Matrix3x3 rotation = (Matrix3x3::RotZ(yaw) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotX(roll);//Multiply(rotation.m, RotZ(PI/2.0).m);
+
+    return rotation;
+}
+
 
 // A * B
 Matrix4x4 operator*(const Matrix4x4& matrixA, const Matrix4x4& matrixB)
@@ -73,22 +80,4 @@ Vector4<float> operator*(const Matrix4x4& matrix, const Vector4<float>& colVec)
     }
 
     return result;
-}
-
-
-// Roll-Pitch-Yaw x-y'-z''(intrinsic rotation) or z-y-x (extrinsic rotation)
-Matrix3x3 RPY(float roll, float pitch, float yaw)
-{
-    //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotX(roll).m, Matrix3x3::RotY(pitch).m).m, Matrix3x3::RotZ(yaw).m);//Multiply(rotation.m, RotZ(PI/2.0).m);
-    Matrix3x3 rotation = (Matrix3x3::RotX(roll) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotZ(yaw);//Multiply(rotation.m, RotZ(PI/2.0).m);
-    return rotation;
-}
-
-// Yaw-Pitch-Roll z-y'-x''(intrinsic rotation) or x-y-z (extrinsic rotation)
-Matrix3x3 YPR(float roll, float pitch, float yaw)
-{
-    //Matrix3x3 rotation = Matrix3x3::Multiply(Matrix3x3::Multiply(Matrix3x3::RotZ(yaw).m, Matrix3x3::RotY(pitch).m).m, Matrix3x3::RotX(roll).m);//Multiply(rotation.m, RotZ(PI/2.0).m);
-    Matrix3x3 rotation = (Matrix3x3::RotZ(yaw) * Matrix3x3::RotY(pitch)) * Matrix3x3::RotX(roll);//Multiply(rotation.m, RotZ(PI/2.0).m);
-
-    return rotation;
 }
