@@ -11,7 +11,6 @@
 
 void Joystick::Start()
 {
-    pinMode(zPin, INPUT_PULLUP);
     
 }
 
@@ -26,8 +25,10 @@ Vector3<float> Joystick::Read(bool normalize)
 
   int rawX = map(analogRead(this->xPin), 0, microADCResolution, 0, joystickADCResolution);
   int rawY = map(analogRead(this->yPin), 0, microADCResolution, 0, joystickADCResolution);
-  //Always inverted so that pressed = 1, else 0;
-  isPressed = !digitalRead(zPin);
+  if (zPin) {
+    //Always inverted so that pressed = 1, else 0;
+    isPressed = !digitalRead(*zPin);
+  }  
 
   //------------ Fix reversed rawY axis to match down(-) up(+) standards for cartesian coords. --------------
   if (rawY != rawMidpoint)

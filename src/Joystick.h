@@ -4,23 +4,32 @@
 
 class Joystick
 {
-  int xPin, yPin, zPin;
+  int xPin, yPin;
+  int *zPin = NULL;
 public:  
   Vector2<float> axes;
   bool isPressed = 0; // 1
   bool invertH = false; 
   bool invertV = false;
 
-  Joystick(int xPin, int yPin, int zPin, bool invertHorizontal = false, bool invertVertical = false)
+  Joystick(int pinX, int pinY, int* pinZ = NULL, bool invertHorizontal = false, bool invertVertical = false)
   {
-    this->xPin = xPin;
-    this->yPin = yPin;
-    this->zPin = zPin;
+    this->xPin = pinX;
+    this->yPin = pinY;
     invertH = invertHorizontal;
     invertV = invertVertical;
-    pinMode(zPin, INPUT_PULLUP);
+    if (pinZ) {
+      this->zPin = new int;
+      *this->zPin = *pinZ;
+      pinMode(*this->zPin, INPUT_PULLUP);
+    }
   }
-  ~Joystick() {}
+  ~Joystick() 
+  {
+    if (zPin) {
+      delete zPin;
+    }
+  }
   void Start();
   Vector3<float> Read(bool normalize = false);
   void Print();

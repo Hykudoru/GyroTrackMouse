@@ -22,12 +22,17 @@ extern int joystickCount;
 MuxJoystick leftJoystick(LEFT_JOYSTICK_MUX_PORT);
 MuxJoystick rightJoystick(RIGHT_JOYSTICK_MUX_PORT);
 #include <Joystick.h>
-#define SINGLE_JOYSTICK_MOUSE  
+#define SINGLE_HANDED_MOUSE  
 
 #define JOYSTICK_X_PIN 4
 #define JOYSTICK_Y_PIN 3
-#define JOYSTICK_Z_PIN 1
-Joystick joystick = Joystick(JOYSTICK_X_PIN, JOYSTICK_Y_PIN, JOYSTICK_Z_PIN, true, true);
+#define JOYSTICK2_X_PIN 7
+#define JOYSTICK2_Y_PIN 8
+
+#define MOUSE_LEFT_PIN 1
+#define MOUSE_RIGHT_PIN 10 
+Joystick joystick = Joystick(JOYSTICK_X_PIN, JOYSTICK_Y_PIN, MOUSE_LEFT_PIN, true, true);
+Joystick joystick2 = Joystick(JOYSTICK2_X_PIN, JOYSTICK2_Y_PIN, NULL, true, true);
 #include <IMU.h>
 IMU imu = IMU();
 bool isMousePointer = false;
@@ -106,7 +111,8 @@ void setup()
   // =========================
   // pinMode(BUTTON_A, INPUT_PULLUP);
   // pinMode(BUTTON_B, INPUT_PULLUP);
-  // pinMode(BUTTON_C, INPUT_PULLUP);
+  pinMode(MOUSE_LEFT_PIN, INPUT_PULLUP);
+  pinMode(MOUSE_RIGHT_PIN, INPUT_PULLUP);
   // touchAttachInterrupt(TOUCH_PIN_GPIO_33, TriggerWakeSleepState, 20);
   // esp_sleep_enable_touchpad_wakeup();
   leftJoystick.Start();
@@ -176,7 +182,7 @@ void loop()
 
       // JOYSTICK BUTTON PRESS
       static bool isPressing = false;
-      if (scroll.z) 
+      if (joystick.isPressed) 
       {
         if (!isPressing) 
         {
@@ -211,8 +217,9 @@ void loop()
 
 
     // -------SINGLE JOYSTICK MOUSE---------
-    #if defined(SINGLE_JOYSTICK_MOUSE)
+    #if defined(SINGLE_HANDED_MOUSE)
       mouse = joystick.Read();
+      scroll = joystick2.Read();
     #else
       mouse = leftJoystick.Read();
       // -------DUAL JOYSTICK MOUSE---------
@@ -234,7 +241,14 @@ void loop()
         }
       #endif
     #endif
-    
+    if (scroll.Magnitude() > EPSILON) 
+    {
+      scroll.x = constrain(scroll.x, -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
+      scroll.y = constrain(scroll.y, -MAX_MOUSE_SCROLL_SPEED, MAX_MOUSE_SCROLL_SPEED);
+      
+      bleMouse.move(0, 0, scroll.y, scroll.x);
+    }
+
     // if either joystick moved
     if (mouse.Magnitude() > EPSILON || mouse2.Magnitude() > EPSILON)
     {
@@ -279,7 +293,7 @@ void loop()
     }
 
     // JOYSTICK BUTTON PRESS
-    if (mouse.z || mouse2.z) 
+    if (mouse.z || mouse2.z || !digitalRead(MOUSE_LEFT_PIN)) 
     {
       bleMouse.click(MOUSE_LEFT);
       delay(250); //since joystick clicks last longer than actual mouse 
